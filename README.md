@@ -1,70 +1,163 @@
-# Getting Started with Create React App
+# Finance Dashboard
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A responsive personal finance dashboard built with React, Recharts, and Lucide icons. The app presents a six-month financial snapshot with summary metrics, trend charts, transaction filtering, role-based actions, and quick insights generated from mock transaction data.
+
+## Overview
+
+This project was designed as a frontend dashboard experience for exploring income, expenses, savings, and category-level spending patterns in a clean single-page interface.
+
+The dashboard includes:
+
+- A financial overview with balance, income, expenses, and savings-rate summary cards
+- Interactive charts for running balance, monthly income vs expenses, and category-level spending
+- A transaction table with search, category/type filters, and sortable columns
+- An insights section that highlights top spending behavior and month-over-month comparisons
+- A role toggle that enables admin-only actions such as adding a transaction
+- Light and dark theme support
+- CSV export for the currently filtered transaction set
+
+## Approach
+
+The app uses a single React dashboard component backed by mock transaction data. Derived values such as totals, category summaries, filtered transactions, and chart datasets are computed with `useMemo` so the UI stays straightforward while avoiding unnecessary recalculations during filtering and sorting.
+
+For the interface, the focus was on making key finance information easy to scan:
+
+- Summary cards surface the most important top-level metrics first
+- Charts provide fast visual comparison across months and spending categories
+- The transactions section supports day-to-day exploration with search and filters
+- The insights section translates raw numbers into more readable takeaways
+
+## Tech Stack
+
+- React
+- Create React App
+- Recharts
+- Lucide React
+- React Testing Library
+
+## Project Structure
+
+```text
+finance-dashboard/
+|-- public/
+|-- src/
+|   |-- App.js
+|   |-- App.css
+|   |-- App.test.js
+|   |-- FinanceDashboard.jsx
+|   |-- index.css
+|   `-- index.js
+|-- package.json
+`-- README.md
+```
+
+## Setup Instructions
+
+### Prerequisites
+
+- Node.js 18 or later
+- npm
+
+### Install dependencies
+
+```bash
+npm install
+```
+
+### Run locally
+
+```bash
+npm start
+```
+
+By default, Create React App runs on `http://localhost:3000`.
+
+If port `3000` is already in use, run:
+
+```powershell
+$env:PORT=3001
+npm start
+```
+
+Then open `http://localhost:3001`.
 
 ## Available Scripts
 
-In the project directory, you can run:
-
 ### `npm start`
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
-
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
-
-### `npm test`
-
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+Starts the development server with hot reload.
 
 ### `npm run build`
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+Builds an optimized production bundle in the `build/` folder.
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+### `npm test -- --watch=false --runInBand`
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+Runs the test suite once in single-process mode. The `--runInBand` flag is helpful on some Windows setups where Jest worker processes can hit `EPERM` spawn errors.
 
-### `npm run eject`
+## Features Explained
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+### 1. Financial Overview
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+Displays the most important financial KPIs:
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+- Total balance
+- Total income
+- Total expenses
+- Savings rate
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+### 2. Visual Analytics
 
-## Learn More
+Uses charts to make trends easier to understand:
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+- Area chart for running balance trend
+- Bar chart for monthly income vs expenses
+- Pie chart for category-wise expense distribution
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+### 3. Transaction Management
 
-### Code Splitting
+The transactions section supports:
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+- Search by description or category
+- Filter by transaction type
+- Filter by category
+- Sort by date or amount
+- Export filtered records as CSV
 
-### Analyzing the Bundle Size
+### 4. Role-Based Interaction
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+The role switcher simulates two user modes:
 
-### Making a Progressive Web App
+- `viewer`: can explore dashboard data
+- `admin`: can add new transactions through the modal form
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+### 5. Insights Panel
 
-### Advanced Configuration
+Summarizes patterns from the underlying data, including:
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+- Highest spending category
+- Monthly comparison against the previous month
+- Observations about savings, housing costs, lifestyle spending, and freelance income
 
-### Deployment
+## Testing
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+The project includes a basic React Testing Library test to confirm the main dashboard heading renders correctly.
 
-### `npm run build` fails to minify
+Run:
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+```bash
+npm test -- --watch=false --runInBand
+```
+
+## Future Improvements
+
+- Persist transactions with local storage or a backend API
+- Add authentication and real user roles
+- Support custom date ranges instead of fixed mock months
+- Add editable and deletable transactions
+- Connect to real financial datasets or bank integrations
+- Improve mobile layout behavior for dense tables and charts
+
+## Repository
+
+GitHub repository: `https://github.com/Srija-22-web-cs/FinanceDashboard.git`
