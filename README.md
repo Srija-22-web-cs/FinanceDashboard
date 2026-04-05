@@ -15,6 +15,7 @@ The dashboard includes:
 - A role toggle that enables admin-only actions such as adding a transaction
 - Light and dark theme support
 - CSV export for the currently filtered transaction set
+- Responsive layouts for mobile, tablet, and desktop screens
 
 ## Approach
 

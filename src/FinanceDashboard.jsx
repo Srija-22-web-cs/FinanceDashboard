@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid
@@ -95,6 +95,19 @@ const CATEGORY_COLORS = {
 
 const fmt = (n) => new Intl.NumberFormat("en-US", { style:"currency", currency:"USD", maximumFractionDigits:0 }).format(Math.abs(n));
 
+function useViewportWidth() {
+  const getWidth = () => (typeof window === "undefined" ? 1280 : window.innerWidth);
+  const [width, setWidth] = useState(getWidth);
+
+  useEffect(() => {
+    const handleResize = () => setWidth(getWidth());
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  return width;
+}
+
 // ─── SUB-COMPONENTS ──────────────────────────────────────────
 
 function SummaryCard({ label, value, sub, icon: Icon, color, bg, t }) {
@@ -120,7 +133,7 @@ function Badge({ children, color, bg }) {
   );
 }
 
-function AddTransactionModal({ onClose, onAdd, t }) {
+function AddTransactionModal({ onClose, onAdd, t, isMobile }) {
   const [form, setForm] = useState({ description:"", amount:"", category:"Food", type:"expense", date: new Date().toISOString().split("T")[0] });
   const set = (k, v) => setForm(f => ({...f, [k]:v}));
   const submit = () => {
@@ -133,8 +146,8 @@ function AddTransactionModal({ onClose, onAdd, t }) {
   const labelStyle = { fontSize:12, fontWeight:600, color:t.muted, letterSpacing:"0.05em", textTransform:"uppercase", display:"block", marginBottom:6 };
 
   return (
-    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.55)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000 }}>
-      <div style={{ background:t.card, borderRadius:20, padding:28, width:400, border:`1px solid ${t.border}`, boxShadow:"0 20px 60px rgba(0,0,0,0.3)" }}>
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.55)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000, padding:16 }}>
+      <div style={{ background:t.card, borderRadius:20, padding:isMobile ? 20 : 28, width:"100%", maxWidth:420, border:`1px solid ${t.border}`, boxShadow:"0 20px 60px rgba(0,0,0,0.3)" }}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:24 }}>
           <span style={{ fontSize:17, fontWeight:700, color:t.text }}>Add Transaction</span>
           <button onClick={onClose} style={{ background:"none", border:"none", cursor:"pointer", color:t.muted, padding:4 }}><X size={18} /></button>
@@ -151,7 +164,7 @@ function AddTransactionModal({ onClose, onAdd, t }) {
             <label style={labelStyle}>Description</label>
             <input style={inputStyle} placeholder="e.g. Grocery Store" value={form.description} onChange={e => set("description", e.target.value)} />
           </div>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile ? "1fr" : "1fr 1fr", gap:12 }}>
             <div>
               <label style={labelStyle}>Amount ($)</label>
               <input style={inputStyle} type="number" placeholder="0.00" value={form.amount} onChange={e => set("amount", e.target.value)} />
@@ -188,8 +201,16 @@ export default function FinanceDashboard() {
   const [sortField, setSortField] = useState("date");
   const [sortDir, setSortDir] = useState("desc");
   const [showAdd, setShowAdd] = useState(false);
+  const viewportWidth = useViewportWidth();
 
   const t = darkMode ? dark : light;
+  const isMobile = viewportWidth < 768;
+  const isTablet = viewportWidth >= 768 && viewportWidth < 1100;
+  const isCompact = viewportWidth < 1100;
+  const summaryColumns = isMobile ? "1fr" : isTablet ? "repeat(2, minmax(0, 1fr))" : "repeat(4, minmax(0, 1fr))";
+  const overviewColumns = isCompact ? "1fr" : "3fr 2fr";
+  const insightsColumns = isCompact ? "1fr" : "1fr 1fr";
+  const observationColumns = isMobile ? "1fr" : isTablet ? "1fr 1fr" : "1fr 1fr 1fr";
 
   // ── Derived stats
   const totalIncome = useMemo(() => txs.filter(x => x.type==="income").reduce((s,x) => s+x.amount, 0), [txs]);
@@ -267,55 +288,57 @@ export default function FinanceDashboard() {
   };
 
   return (
-    <div style={{ minHeight:"100vh", background:t.bg, color:t.text, fontFamily:"system-ui,-apple-system,sans-serif", display:"flex" }}>
+    <div style={{ minHeight:"100vh", background:t.bg, color:t.text, fontFamily:"system-ui,-apple-system,sans-serif", display:"flex", flexDirection:isCompact ? "column" : "row" }}>
       {/* ── SIDEBAR */}
-      <div style={{ width:220, background:darkMode?t.sidebar:"#1a1f36", display:"flex", flexDirection:"column", padding:"24px 16px", gap:4, flexShrink:0, position:"sticky", top:0, height:"100vh" }}>
-        <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:28, paddingLeft:8 }}>
+      <div style={{ width:isCompact ? "100%" : 220, background:darkMode?t.sidebar:"#1a1f36", display:"flex", flexDirection:isCompact ? "row" : "column", alignItems:isCompact ? "center" : "stretch", padding:isMobile ? "16px" : "24px 16px", gap:isCompact ? 12 : 4, flexShrink:0, position:isCompact ? "static" : "sticky", top:0, minHeight:isCompact ? "auto" : "100vh", overflowX:isCompact ? "auto" : "visible" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:isCompact ? 0 : 28, paddingLeft:isCompact ? 0 : 8, flexShrink:0 }}>
           <div style={{ width:32, height:32, borderRadius:10, background:"linear-gradient(135deg,#6366f1,#8b5cf6)", display:"flex", alignItems:"center", justifyContent:"center" }}>
             <Wallet size={16} color="#fff" />
           </div>
           <span style={{ fontWeight:800, fontSize:16, color:"#fff", letterSpacing:"-0.01em" }}>FinTrack</span>
         </div>
-        {navItems.map(({ id, label, icon:Icon }) => (
-          <button key={id} onClick={() => setSection(id)} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", borderRadius:10, border:"none", cursor:"pointer", background: section===id ? "rgba(99,102,241,0.2)" : "transparent", color: section===id ? "#818cf8" : "rgba(255,255,255,0.55)", fontWeight: section===id ? 600 : 400, fontSize:14, textAlign:"left", transition:"all 0.15s" }}>
-            <Icon size={16} /> {label}
-          </button>
-        ))}
-        <div style={{ flex:1 }} />
+        <div style={{ display:"flex", flexDirection:isCompact ? "row" : "column", gap:4, flex:isCompact ? 1 : "initial", minWidth:0, overflowX:isCompact ? "auto" : "visible" }}>
+          {navItems.map(({ id, label, icon:Icon }) => (
+            <button key={id} onClick={() => setSection(id)} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", borderRadius:10, border:"none", cursor:"pointer", background: section===id ? "rgba(99,102,241,0.2)" : "transparent", color: section===id ? "#818cf8" : "rgba(255,255,255,0.55)", fontWeight: section===id ? 600 : 400, fontSize:14, textAlign:"left", transition:"all 0.15s", whiteSpace:"nowrap", flexShrink:0 }}>
+              <Icon size={16} /> {label}
+            </button>
+          ))}
+        </div>
+        <div style={{ flex:isCompact ? "initial" : 1 }} />
         {/* Role switcher */}
-        <div style={{ background:"rgba(255,255,255,0.06)", borderRadius:12, padding:"12px 14px" }}>
+        <div style={{ background:"rgba(255,255,255,0.06)", borderRadius:12, padding:"12px 14px", minWidth:isMobile ? 150 : 0, flexShrink:0 }}>
           <div style={{ fontSize:11, color:"rgba(255,255,255,0.35)", fontWeight:600, letterSpacing:"0.06em", textTransform:"uppercase", marginBottom:8 }}>Role</div>
           <div style={{ display:"flex", gap:6 }}>
             {["viewer","admin"].map(r => (
-              <button key={r} onClick={() => setRole(r)} style={{ flex:1, padding:"6px 0", borderRadius:8, border:"none", cursor:"pointer", background: role===r ? "#6366f1" : "rgba(255,255,255,0.08)", color: role===r ? "#fff" : "rgba(255,255,255,0.5)", fontWeight:600, fontSize:12, textTransform:"capitalize", display:"flex", alignItems:"center", justifyContent:"center", gap:4 }}>
+              <button key={r} onClick={() => setRole(r)} style={{ flex:1, padding:"6px 0", borderRadius:8, border:"none", cursor:"pointer", background: role===r ? "#6366f1" : "rgba(255,255,255,0.08)", color: role===r ? "#fff" : "rgba(255,255,255,0.5)", fontWeight:600, fontSize:12, textTransform:"capitalize", display:"flex", alignItems:"center", justifyContent:"center", gap:4, whiteSpace:"nowrap" }}>
                 {r==="viewer" ? <Eye size={11}/> : <ShieldCheck size={11}/>} {r}
               </button>
             ))}
           </div>
         </div>
-        <button onClick={() => setDarkMode(d => !d)} style={{ display:"flex", alignItems:"center", gap:8, padding:"10px 12px", borderRadius:10, border:"none", cursor:"pointer", background:"transparent", color:"rgba(255,255,255,0.4)", fontSize:13, marginTop:4 }}>
+        <button onClick={() => setDarkMode(d => !d)} style={{ display:"flex", alignItems:"center", gap:8, padding:"10px 12px", borderRadius:10, border:"none", cursor:"pointer", background:"transparent", color:"rgba(255,255,255,0.4)", fontSize:13, marginTop:isCompact ? 0 : 4, whiteSpace:"nowrap", flexShrink:0 }}>
           {darkMode ? <Sun size={14}/> : <Moon size={14}/>} {darkMode ? "Light mode" : "Dark mode"}
         </button>
       </div>
 
       {/* ── MAIN CONTENT */}
-      <div style={{ flex:1, padding:"32px 36px", overflowY:"auto" }}>
+      <div style={{ flex:1, padding:isMobile ? "20px 16px 28px" : isTablet ? "24px 24px 32px" : "32px 36px", overflowY:"auto" }}>
 
         {/* Header */}
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:32 }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:isMobile ? "stretch" : "flex-start", marginBottom:32, gap:16, flexDirection:isCompact ? "column" : "row" }}>
           <div>
-            <h1 style={{ margin:0, fontSize:24, fontWeight:800, color:t.text, letterSpacing:"-0.02em" }}>
+            <h1 style={{ margin:0, fontSize:isMobile ? 22 : 24, fontWeight:800, color:t.text, letterSpacing:"-0.02em" }}>
               {section === "overview" ? "Financial Overview" : section === "transactions" ? "Transactions" : "Insights"}
             </h1>
             <p style={{ margin:"4px 0 0", color:t.muted, fontSize:14 }}>Jan – Jun 2024 · 6-month snapshot</p>
           </div>
-          <div style={{ display:"flex", gap:10, alignItems:"center" }}>
+          <div style={{ display:"flex", gap:10, alignItems:isMobile ? "stretch" : "center", flexDirection:isMobile ? "column" : "row", width:isMobile ? "100%" : "auto" }}>
             {role === "admin" && section !== "insights" && (
-              <button onClick={() => setShowAdd(true)} style={{ display:"flex", alignItems:"center", gap:7, padding:"10px 18px", borderRadius:11, background:t.accent, color:"#fff", border:"none", cursor:"pointer", fontWeight:700, fontSize:14 }}>
+              <button onClick={() => setShowAdd(true)} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:7, padding:"10px 18px", borderRadius:11, background:t.accent, color:"#fff", border:"none", cursor:"pointer", fontWeight:700, fontSize:14, width:isMobile ? "100%" : "auto" }}>
                 <Plus size={15} /> Add
               </button>
             )}
-            <button onClick={exportCSV} style={{ display:"flex", alignItems:"center", gap:7, padding:"10px 16px", borderRadius:11, background:t.surface, color:t.muted, border:`1px solid ${t.border}`, cursor:"pointer", fontWeight:600, fontSize:14 }}>
+            <button onClick={exportCSV} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:7, padding:"10px 16px", borderRadius:11, background:t.surface, color:t.muted, border:`1px solid ${t.border}`, cursor:"pointer", fontWeight:600, fontSize:14, width:isMobile ? "100%" : "auto" }}>
               <Download size={14} /> Export
             </button>
           </div>
@@ -325,7 +348,7 @@ export default function FinanceDashboard() {
         {section === "overview" && (
           <>
             {/* Summary cards */}
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:16, marginBottom:28 }}>
+            <div style={{ display:"grid", gridTemplateColumns:summaryColumns, gap:16, marginBottom:28 }}>
               <SummaryCard label="Total Balance" value={fmt(balance)} sub={`${balance>=0?"↑ Surplus":"↓ Deficit"} this period`} icon={Wallet} color={t.accent} bg={t.accentLight} t={t} />
               <SummaryCard label="Total Income" value={fmt(totalIncome)} sub="Across all sources" icon={TrendingUp} color={t.income} bg={t.incomeLight} t={t} />
               <SummaryCard label="Total Expenses" value={fmt(totalExpense)} sub={`${txs.filter(x=>x.type==="expense").length} transactions`} icon={TrendingDown} color={t.expense} bg={t.expenseLight} t={t} />
@@ -333,12 +356,12 @@ export default function FinanceDashboard() {
             </div>
 
             {/* Charts row */}
-            <div style={{ display:"grid", gridTemplateColumns:"3fr 2fr", gap:20, marginBottom:24 }}>
+            <div style={{ display:"grid", gridTemplateColumns:overviewColumns, gap:20, marginBottom:24 }}>
               {/* Area chart */}
-              <div style={{ background:t.card, borderRadius:16, border:`1px solid ${t.border}`, padding:"22px 24px" }}>
+              <div style={{ background:t.card, borderRadius:16, border:`1px solid ${t.border}`, padding:isMobile ? "18px 16px" : "22px 24px" }}>
                 <div style={{ fontSize:14, fontWeight:700, color:t.text, marginBottom:4 }}>Balance Trend</div>
                 <div style={{ fontSize:12, color:t.muted, marginBottom:18 }}>Running balance across 6 months</div>
-                <ResponsiveContainer width="100%" height={200}>
+                <ResponsiveContainer width="100%" height={isMobile ? 220 : 200}>
                   <AreaChart data={balanceData}>
                     <defs>
                       <linearGradient id="balGrad" x1="0" y1="0" x2="0" y2="1">
@@ -348,17 +371,17 @@ export default function FinanceDashboard() {
                     </defs>
                     <CartesianGrid stroke={t.chartGrid} strokeDasharray="3 3" vertical={false} />
                     <XAxis dataKey="month" tick={{ fill:t.muted, fontSize:12 }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fill:t.muted, fontSize:12 }} axisLine={false} tickLine={false} tickFormatter={v => `$${(v/1000).toFixed(0)}k`} />
+                    {!isMobile && <YAxis tick={{ fill:t.muted, fontSize:12 }} axisLine={false} tickLine={false} tickFormatter={v => `$${(v/1000).toFixed(0)}k`} />}
                     <Tooltip content={<ChartTooltip />} />
                     <Area type="monotone" dataKey="Balance" stroke="#6366f1" strokeWidth={2.5} fill="url(#balGrad)" dot={{ fill:"#6366f1", r:4 }} activeDot={{ r:6 }} />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
               {/* Pie chart */}
-              <div style={{ background:t.card, borderRadius:16, border:`1px solid ${t.border}`, padding:"22px 24px" }}>
+              <div style={{ background:t.card, borderRadius:16, border:`1px solid ${t.border}`, padding:isMobile ? "18px 16px" : "22px 24px" }}>
                 <div style={{ fontSize:14, fontWeight:700, color:t.text, marginBottom:4 }}>Spending by Category</div>
                 <div style={{ fontSize:12, color:t.muted, marginBottom:8 }}>Expense distribution</div>
-                <ResponsiveContainer width="100%" height={145}>
+                <ResponsiveContainer width="100%" height={isMobile ? 180 : 145}>
                   <PieChart>
                     <Pie data={catData} cx="50%" cy="50%" innerRadius={42} outerRadius={68} paddingAngle={2} dataKey="value">
                       {catData.map((entry) => <Cell key={entry.name} fill={CATEGORY_COLORS[entry.name]||"#64748b"} />)}
@@ -379,21 +402,21 @@ export default function FinanceDashboard() {
             </div>
 
             {/* Bar chart */}
-            <div style={{ background:t.card, borderRadius:16, border:`1px solid ${t.border}`, padding:"22px 24px" }}>
+            <div style={{ background:t.card, borderRadius:16, border:`1px solid ${t.border}`, padding:isMobile ? "18px 16px" : "22px 24px" }}>
               <div style={{ fontSize:14, fontWeight:700, color:t.text, marginBottom:4 }}>Monthly Income vs Expenses</div>
               <div style={{ fontSize:12, color:t.muted, marginBottom:18 }}>Month-over-month comparison</div>
-              <div style={{ display:"flex", gap:16, marginBottom:12 }}>
+              <div style={{ display:"flex", gap:16, marginBottom:12, flexWrap:"wrap" }}>
                 {[{c:"#10b981",l:"Income"},{c:"#f43f5e",l:"Expenses"}].map(({c,l}) => (
                   <span key={l} style={{ display:"flex", alignItems:"center", gap:6, fontSize:12, color:t.muted }}>
                     <span style={{ width:10, height:10, borderRadius:2, background:c }} /> {l}
                   </span>
                 ))}
               </div>
-              <ResponsiveContainer width="100%" height={180}>
+              <ResponsiveContainer width="100%" height={isMobile ? 220 : 180}>
                 <BarChart data={monthlyData} barCategoryGap="30%">
                   <CartesianGrid stroke={t.chartGrid} strokeDasharray="3 3" vertical={false} />
                   <XAxis dataKey="month" tick={{ fill:t.muted, fontSize:12 }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fill:t.muted, fontSize:12 }} axisLine={false} tickLine={false} tickFormatter={v => `$${(v/1000).toFixed(0)}k`} />
+                  {!isMobile && <YAxis tick={{ fill:t.muted, fontSize:12 }} axisLine={false} tickLine={false} tickFormatter={v => `$${(v/1000).toFixed(0)}k`} />}
                   <Tooltip content={<ChartTooltip />} />
                   <Bar dataKey="Income" fill="#10b981" radius={[4,4,0,0]} />
                   <Bar dataKey="Expenses" fill="#f43f5e" radius={[4,4,0,0]} />
@@ -407,17 +430,17 @@ export default function FinanceDashboard() {
         {section === "transactions" && (
           <>
             {/* Filters */}
-            <div style={{ display:"flex", gap:12, marginBottom:20, flexWrap:"wrap" }}>
-              <div style={{ flex:1, minWidth:200, display:"flex", alignItems:"center", gap:10, background:t.card, border:`1px solid ${t.border}`, borderRadius:11, padding:"10px 16px" }}>
+            <div style={{ display:"flex", gap:12, marginBottom:20, flexWrap:"wrap", flexDirection:isMobile ? "column" : "row" }}>
+              <div style={{ flex:1, minWidth:isMobile ? "100%" : 200, display:"flex", alignItems:"center", gap:10, background:t.card, border:`1px solid ${t.border}`, borderRadius:11, padding:"10px 16px" }}>
                 <Search size={15} color={t.muted} />
                 <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search transactions..." style={{ border:"none", outline:"none", background:"transparent", color:t.text, fontSize:14, flex:1, minWidth:0 }} />
               </div>
-              <select value={filterType} onChange={e=>setFilterType(e.target.value)} style={{ padding:"10px 14px", borderRadius:11, border:`1px solid ${t.border}`, background:t.card, color:t.text, fontSize:14, cursor:"pointer" }}>
+              <select value={filterType} onChange={e=>setFilterType(e.target.value)} style={{ padding:"10px 14px", borderRadius:11, border:`1px solid ${t.border}`, background:t.card, color:t.text, fontSize:14, cursor:"pointer", minWidth:isMobile ? "100%" : 0 }}>
                 <option value="all">All Types</option>
                 <option value="income">Income</option>
                 <option value="expense">Expenses</option>
               </select>
-              <select value={filterCat} onChange={e=>setFilterCat(e.target.value)} style={{ padding:"10px 14px", borderRadius:11, border:`1px solid ${t.border}`, background:t.card, color:t.text, fontSize:14, cursor:"pointer" }}>
+              <select value={filterCat} onChange={e=>setFilterCat(e.target.value)} style={{ padding:"10px 14px", borderRadius:11, border:`1px solid ${t.border}`, background:t.card, color:t.text, fontSize:14, cursor:"pointer", minWidth:isMobile ? "100%" : 0 }}>
                 <option value="all">All Categories</option>
                 {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
@@ -425,7 +448,8 @@ export default function FinanceDashboard() {
 
             {/* Table */}
             <div style={{ background:t.card, borderRadius:16, border:`1px solid ${t.border}`, overflow:"hidden" }}>
-              <div style={{ display:"grid", gridTemplateColumns:"120px 1fr 130px 90px 120px", gap:0, padding:"12px 20px", borderBottom:`1px solid ${t.border}`, background:t.surface }}>
+              <div style={{ overflowX:isMobile ? "auto" : "visible" }}>
+              <div style={{ display:"grid", gridTemplateColumns:isTablet ? "110px 1fr 120px 80px 110px" : "120px 1fr 130px 90px 120px", gap:0, padding:"12px 20px", borderBottom:`1px solid ${t.border}`, background:t.surface, minWidth:isMobile ? 640 : "auto" }}>
                 {[["date","Date"],["","Description"],["","Category"],["","Type"],["amount","Amount"]].map(([f,l],i) => (
                   <div key={i} onClick={f ? ()=>toggleSort(f) : undefined} style={{ fontSize:11, fontWeight:700, color:t.muted, letterSpacing:"0.06em", textTransform:"uppercase", cursor:f?"pointer":"default", display:"flex", alignItems:"center", gap:4, justifyContent: i===4?"flex-end":"flex-start" }}>
                     {l} {f && <SortIcon f={f} />}
@@ -436,7 +460,7 @@ export default function FinanceDashboard() {
                 <div style={{ padding:40, textAlign:"center", color:t.muted, fontSize:14 }}>No transactions match your filters.</div>
               )}
               {filteredTxs.map((tx, i) => (
-                <div key={tx.id} style={{ display:"grid", gridTemplateColumns:"120px 1fr 130px 90px 120px", padding:"14px 20px", borderBottom: i<filteredTxs.length-1 ? `1px solid ${t.border}` : "none", alignItems:"center", transition:"background 0.1s" }}
+                <div key={tx.id} style={{ display:"grid", gridTemplateColumns:isTablet ? "110px 1fr 120px 80px 110px" : "120px 1fr 130px 90px 120px", padding:"14px 20px", borderBottom: i<filteredTxs.length-1 ? `1px solid ${t.border}` : "none", alignItems:"center", transition:"background 0.1s", minWidth:isMobile ? 640 : "auto" }}
                   onMouseEnter={e=>e.currentTarget.style.background=t.surface}
                   onMouseLeave={e=>e.currentTarget.style.background="transparent"}
                 >
@@ -453,16 +477,17 @@ export default function FinanceDashboard() {
                   </span>
                 </div>
               ))}
+              </div>
             </div>
-            <div style={{ marginTop:12, fontSize:13, color:t.muted, textAlign:"right" }}>{filteredTxs.length} of {txs.length} transactions</div>
+            <div style={{ marginTop:12, fontSize:13, color:t.muted, textAlign:isMobile ? "left" : "right" }}>{filteredTxs.length} of {txs.length} transactions</div>
           </>
         )}
 
         {/* ══ INSIGHTS SECTION */}
         {section === "insights" && (
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:20 }}>
+          <div style={{ display:"grid", gridTemplateColumns:insightsColumns, gap:20 }}>
             {/* Top spending */}
-            <div style={{ background:t.card, borderRadius:16, border:`1px solid ${t.border}`, padding:24 }}>
+            <div style={{ background:t.card, borderRadius:16, border:`1px solid ${t.border}`, padding:isMobile ? 18 : 24 }}>
               <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:18 }}>
                 <div style={{ width:34, height:34, borderRadius:10, background:t.expenseLight, display:"flex", alignItems:"center", justifyContent:"center" }}><TrendingDown size={16} color={t.expense}/></div>
                 <div>
@@ -472,9 +497,9 @@ export default function FinanceDashboard() {
               </div>
               {catData.map((c, i) => (
                 <div key={c.name} style={{ marginBottom:12 }}>
-                  <div style={{ display:"flex", justifyContent:"space-between", fontSize:13, marginBottom:5 }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", fontSize:13, marginBottom:5, gap:12 }}>
                     <span style={{ color:t.text, fontWeight: i===0?700:400 }}>{c.name} {i===0 && "🔥"}</span>
-                    <span style={{ color:t.muted, fontFamily:"monospace" }}>{fmt(c.value)}</span>
+                    <span style={{ color:t.muted, fontFamily:"monospace", flexShrink:0 }}>{fmt(c.value)}</span>
                   </div>
                   <div style={{ height:5, borderRadius:999, background:t.border }}>
                     <div style={{ height:"100%", borderRadius:999, background: CATEGORY_COLORS[c.name]||t.accent, width:`${(c.value/catData[0].value*100).toFixed(0)}%` }} />
@@ -484,7 +509,7 @@ export default function FinanceDashboard() {
             </div>
 
             {/* Monthly comparison */}
-            <div style={{ background:t.card, borderRadius:16, border:`1px solid ${t.border}`, padding:24 }}>
+            <div style={{ background:t.card, borderRadius:16, border:`1px solid ${t.border}`, padding:isMobile ? 18 : 24 }}>
               <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:18 }}>
                 <div style={{ width:34, height:34, borderRadius:10, background:t.accentLight, display:"flex", alignItems:"center", justifyContent:"center" }}><BarChart2 size={16} color={t.accent}/></div>
                 <div>
@@ -497,9 +522,9 @@ export default function FinanceDashboard() {
                 const isPos = +delta >= 0;
                 const good = row.label === "Expenses" ? !isPos : isPos;
                 return (
-                  <div key={row.label} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"12px 0", borderBottom:`1px solid ${t.border}` }}>
+                  <div key={row.label} style={{ display:"flex", justifyContent:"space-between", alignItems:isMobile ? "flex-start" : "center", padding:"12px 0", borderBottom:`1px solid ${t.border}`, gap:12, flexDirection:isMobile ? "column" : "row" }}>
                     <span style={{ fontSize:13, color:t.muted }}>{row.label}</span>
-                    <div style={{ textAlign:"right" }}>
+                    <div style={{ textAlign:isMobile ? "left" : "right" }}>
                       <div style={{ fontSize:16, fontWeight:700, fontFamily:"monospace", color: row.label==="Expenses"?t.expense:row.label==="Income"?t.income:t.text }}>{fmt(row.curr)}</div>
                       <div style={{ fontSize:11, color: good ? t.income : t.expense }}>{isPos?"+":""}{delta}% vs last month</div>
                     </div>
@@ -509,12 +534,12 @@ export default function FinanceDashboard() {
             </div>
 
             {/* Key observations */}
-            <div style={{ background:t.card, borderRadius:16, border:`1px solid ${t.border}`, padding:24, gridColumn:"span 2" }}>
+            <div style={{ background:t.card, borderRadius:16, border:`1px solid ${t.border}`, padding:isMobile ? 18 : 24, gridColumn:isCompact ? "auto" : "span 2" }}>
               <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:18 }}>
                 <div style={{ width:34, height:34, borderRadius:10, background:darkMode?"#1c2a1a":t.incomeLight, display:"flex", alignItems:"center", justifyContent:"center" }}><Lightbulb size={16} color={t.income}/></div>
                 <div style={{ fontSize:13, fontWeight:700, color:t.text }}>Key Observations</div>
               </div>
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:14 }}>
+              <div style={{ display:"grid", gridTemplateColumns:observationColumns, gap:14 }}>
                 {[
                   { icon:"📦", title:"Housing is fixed", body:`Rent at ${fmt(1400)}/mo accounts for ${((1400/totalExpense)*100*6).toFixed(0)}% of all expenses.` },
                   { icon:"📈", title:"Income growing", body:`Salary raised from $5,200 to $5,500 in May, a 5.8% increase.` },
@@ -535,7 +560,7 @@ export default function FinanceDashboard() {
         )}
       </div>
 
-      {showAdd && <AddTransactionModal onClose={() => setShowAdd(false)} onAdd={tx => setTxs(prev => [tx,...prev])} t={t} />}
+      {showAdd && <AddTransactionModal onClose={() => setShowAdd(false)} onAdd={tx => setTxs(prev => [tx,...prev])} t={t} isMobile={isMobile} />}
     </div>
   );
 }
